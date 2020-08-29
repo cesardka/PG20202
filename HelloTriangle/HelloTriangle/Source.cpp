@@ -33,18 +33,22 @@ const GLuint WIDTH = 800, HEIGHT = 600;
 // C�digo fonte do Vertex Shader (em GLSL): ainda hardcoded
 const GLchar* vertexShaderSource = "#version 450\n"
 "layout (location = 0) in vec3 position;\n"
+"layout (location = 1) in vec3 color;\n"
+"out vec4 finalColor;\n"
 "void main()\n"
 "{\n"
 "gl_Position = vec4(position.x, position.y, position.z, 1.0);\n"
+"finalColor  = vec4(color, 1.0);\n"
 "}\0";
 
 //C�difo fonte do Fragment Shader (em GLSL): ainda hardcoded
 const GLchar* fragmentShaderSource = "#version 450\n"
 "uniform vec4 inputColor;\n"
+"in vec4 finalColor;\n"
 "out vec4 color;\n"
 "void main()\n"
 "{\n"
-"color = inputColor;\n"
+"color = finalColor;\n"
 "}\n\0";
 
 // Fun��o MAIN
@@ -69,8 +73,7 @@ int main()
 	glfwSetKeyCallback(window, key_callback);
 
 	// GLAD: carrega todos os ponteiros d fun��es da OpenGL
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	{
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 		std::cout << "Failed to initialize GLAD" << std::endl;
 
 	}
@@ -93,16 +96,8 @@ int main()
 	// Gerando um buffer simples, com a geometria de um tri�ngulo
 	GLuint VAO = setupGeometry();
 
-	// Enviando a cor desejada (vec4) para o fragment shader
-	// Utilizamos a vari�veis do tipo uniform em GLSL para armazenar esse tipo de info
-	// que n�o est� nos buffers
-	GLint colorLoc = glGetUniformLocation(shaderID, "inputColor");
-	assert(colorLoc > -1);
-	glUseProgram(shaderID);
-
 	// Loop da aplica��o - "game loop"
-	while (!glfwWindowShouldClose(window))
-	{
+	while (!glfwWindowShouldClose(window)) {
 		// Checa se houveram eventos de input (key pressed, mouse moved etc.) e chama as fun��es de callback correspondentes
 		glfwPollEvents();
 
@@ -114,17 +109,9 @@ int main()
 		glPointSize(10);
 
 		// Chamada de desenho - drawcall
-		glUniform4f(colorLoc, 1.0f, 0.0f, 0.0f, 1.0f);
 		glUseProgram(shaderID);
 		glBindVertexArray(VAO);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
-		glBindVertexArray(0);
-
-		// Chamada de desenho - drawcall
-		glUniform4f(colorLoc, 0.0f, 0.0f, 0.0f, 1.0f);
-		glUseProgram(shaderID);
-		glBindVertexArray(VAO);
-		glDrawArrays(GL_LINE_LOOP, 0, 6);
 		glBindVertexArray(0);
 
 		// Troca os buffers da tela
@@ -161,8 +148,7 @@ int setupShader()
 	GLint success;
 	GLchar infoLog[512];
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
+	if (!success) {
 		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
 		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
 	}
@@ -172,8 +158,7 @@ int setupShader()
 	glCompileShader(fragmentShader);
 	// Checando erros de compila��o (exibi��o via log no terminal)
 	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
+	if (!success) {
 		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
 		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
 	}
@@ -206,11 +191,12 @@ int setupGeometry()
 	// Cada atributo do v�rtice (coordenada, cores, coordenadas de textura, normal, etc)
 	// Pode ser arazenado em um VBO �nico ou em VBOs separados
 	GLfloat vertices[] = {
-		-0.5f,  0.5f, 0.0f, // Primeiro triângulo (cima pra baixo)
-		 0.5f,  0.5f, 0.0f, // Primeiro triângulo (cima pra baixo)
-		 0.0f,  0.0f, 0.0f, // Ponto de origem
-		-0.5f, -0.5f, 0.0f, // Segundo triângulo (baixo pra cima)
-		 0.5f, -0.5f, 0.0f, // Segundo triângulo (baixo pra cima)
+		-0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // Primeiro triângulo (cima pra baixo) vermelho
+		 0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // Primeiro triângulo (cima pra baixo) verde
+		 0.0f,  0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Ponto de origem                     azul
+		 0.0f,  0.0f, 0.0f, 0.2f, 0.2f, 0.2f, // Ponto de origem                     azul
+		-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, // Segundo triângulo (baixo pra cima)  roxo
+		 0.5f, -0.5f, 0.0f, 0.2f, 0.2f, 1.0f  // Segundo triângulo (baixo pra cima)  amarelo
 	};
 
 	GLuint VBO, VAO;
@@ -234,8 +220,12 @@ int setupGeometry()
 	// Se est� normalizado (entre zero e um)
 	// Tamanho em bytes
 	// Deslocamento a partir do byte zero
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
+
+	// Cores
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), ((GLvoid*)(3 * sizeof(GLfloat))));
+	glEnableVertexAttribArray(1);
 
 	// Observe que isso � permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de v�rtice
 	// atualmente vinculado - para que depois possamos desvincular com seguran�a
