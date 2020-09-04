@@ -6,11 +6,12 @@
  * �ltima atualiza��o em 15/08/2020
  *
  */
+#define _USE_MATH_DEFINES
 
 #include <iostream>
 #include <string>
 #include <assert.h>
-
+#include <math.h>
 using namespace std;
 
 // GLAD
@@ -25,7 +26,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 // Prot�tipos das fun��es
 int setupShader();
-int setupGeometry();
+int setupGeometry(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLint numberOfSides);
 
 // Dimens�es da janela (pode ser alterado em tempo de execu��o)
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -94,7 +95,7 @@ int main()
 	GLuint shaderID = setupShader();
 
 	// Gerando um buffer simples, com a geometria de um tri�ngulo
-	GLuint VAO = setupGeometry();
+	GLuint VAO = setupGeometry(WIDTH / 2, HEIGHT / 2, 0.0f, 120, 360);
 
 	// Loop da aplica��o - "game loop"
 	while (!glfwWindowShouldClose(window)) {
@@ -184,20 +185,43 @@ int setupShader()
 // Apenas atributo coordenada nos v�rtices
 // 1 VBO com as coordenadas, VAO com apenas 1 ponteiro para atributo
 // A fun��o retorna o identificador do VAO
-int setupGeometry()
+int setupGeometry(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLint numberOfSides)
 {
+	GLfloat doublePi = (GLfloat) (2.0f * M_PI);
+	const GLint numberOfVertices = 120;
+
+	GLfloat circleVerticesX[numberOfVertices] = { 0.0f };
+	GLfloat circleVerticesY[numberOfVertices] = { 0.0f };
+	GLfloat circleVerticesZ[numberOfVertices] = { 0.0f };
+
+	for(int i = 1; i < numberOfVertices; i++) {
+		circleVerticesX[i] = x + cos(radius * (i * doublePi / numberOfSides));
+		circleVerticesY[i] = y + sin(radius * (i * doublePi / numberOfSides));
+		circleVerticesZ[i] = z;
+	}
+
+	GLfloat allCircleVertices[numberOfVertices * 6];
+	for(int i = 1; i < numberOfVertices; i++) {
+		allCircleVertices[i * 3]       = circleVerticesX[i]; // X
+		allCircleVertices[(i * 3) + 1] = circleVerticesY[i]; // Y
+		allCircleVertices[(i * 3) + 2] = circleVerticesZ[i]; // Z
+		allCircleVertices[(i * 3) + 3] = 0.0f;               // R
+		allCircleVertices[(i * 3) + 4] = 1.0f;               // G
+		allCircleVertices[(i * 3) + 5] = 0.0f;               // B
+	}
+
 	// Aqui setamos as coordenadas x, y e z do tri�ngulo e as armazenamos de forma
 	// sequencial, j� visando mandar para o VBO (Vertex Buffer Objects)
 	// Cada atributo do v�rtice (coordenada, cores, coordenadas de textura, normal, etc)
 	// Pode ser arazenado em um VBO �nico ou em VBOs separados
-	GLfloat vertices[] = {
-		-0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // Primeiro triângulo (cima pra baixo) vermelho
-		 0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // Primeiro triângulo (cima pra baixo) verde
-		 0.0f,  0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // Ponto de origem                     azul
-		 0.0f,  0.0f, 0.0f, 0.2f, 0.2f, 0.2f, // Ponto de origem                     azul
-		-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, // Segundo triângulo (baixo pra cima)  roxo
-		 0.5f, -0.5f, 0.0f, 0.2f, 0.2f, 1.0f  // Segundo triângulo (baixo pra cima)  amarelo
-	};
+	// GLfloat vertices[] = {
+	// 	 0.0f,  0.0f,  0.0f, 1.0f, 1.0f, 1.0f, //
+	// 	 0.5f,  0.0f,  0.0f, 0.0f, 0.0f, 0.0f, //
+	// 	 0.5f, -0.25f, 0.0f, 0.0f, 0.0f, 0.0f, //
+	// 	 0.0f, -0.5f,  0.0f, 0.0f, 0.0f, 0.0f, //
+	// 	-0.5f, -0.25f, 0.0f, 0.0f, 0.0f, 0.0f, //
+	// 	-0.5f, -0.0f,  0.0f, 0.0f, 0.0f, 0.0f, //
+	// };
 
 	GLuint VBO, VAO;
 
@@ -206,7 +230,7 @@ int setupGeometry()
 	//Faz a conex�o (vincula) do buffer como um buffer de array
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	//Envia os dados do array de floats para o buffer da OpenGl
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(allCircleVertices), allCircleVertices, GL_STATIC_DRAW);
 
 	//Gera��o do identificador do VAO (Vertex Array Object)
 	glGenVertexArrays(1, &VAO);
@@ -236,4 +260,3 @@ int setupGeometry()
 
 	return VAO;
 }
-
